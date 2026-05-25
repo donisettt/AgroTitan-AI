@@ -218,7 +218,7 @@ on_command("START_PATROL"):
     rover_return_to_base()
 ```
 
-Naufal:
+
 
 ## Hardware
 
