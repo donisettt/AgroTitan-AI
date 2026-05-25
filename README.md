@@ -217,3 +217,113 @@ on_command("START_PATROL"):
 
     rover_return_to_base()
 ```
+
+Naufal:
+
+## Hardware
+
+### Fixed Irrigation Node
+
+- ESP32
+- Water level sensor
+- Relay module
+- Mini water pump
+- Servo gate atau solenoid valve
+- Rain sensor (opsional)
+- LED indikator dan buzzer
+- Power supply
+- Box pelindung komponen
+
+### Rover Scout
+
+- ESP32
+- ESP32-CAM
+- Motor DC dan roda
+- Motor driver TB6612FNG atau L298N
+- Baterai 18650
+- Sensor IR line follower
+- Sensor ultrasonic
+- DHT22 atau BME280
+- LED indikator dan buzzer
+- Rangka rover
+
+## Development Guide
+
+1. Siapkan struktur modul sesuai folder `backend/`, `frontend/`, dan `firmware/`.
+2. Tentukan stack final backend, frontend, database, dan broker.
+3. Definisikan file konfigurasi environment untuk koneksi broker, database, dan API.
+4. Implementasikan firmware fixed node terlebih dahulu karena irigasi adalah fungsi utama.
+5. Implementasikan rover scout dan uji navigasi pada lintasan miniatur.
+6. Integrasikan backend dengan MQTT/HTTP handler dan database.
+7. Bangun dashboard monitoring dan kontrol.
+8. Tambahkan recommendation layer dengan rule-based logic sebagai baseline.
+9. Jalankan pengujian end-to-end sebelum demo.
+
+Contoh environment yang disarankan:
+
+```env
+APP_ENV=development
+API_BASE_URL=http://localhost:8000
+MQTT_HOST=localhost
+MQTT_PORT=1883
+MQTT_USERNAME=
+MQTT_PASSWORD=
+DB_HOST=localhost
+DB_NAME=agrotitan_ai
+```
+
+## Testing Checklist
+
+| Area | Kriteria Berhasil |
+| --- | --- |
+| Water level sensor | Nilai berubah sesuai perubahan tinggi air pada miniatur. |
+| Pump and gate control | Aktuator merespons command manual dan logika otomatis. |
+| Rover line follower | Rover stabil mengikuti jalur galengan miniatur. |
+| Marker zona | Rover berhenti tepat pada zona pengamatan. |
+| Obstacle detection | Rover berhenti dan mengirim alert saat obstacle terdeteksi. |
+| ESP32-CAM | Gambar tanaman tampil jelas di dashboard. |
+| MQTT / HTTP | Telemetri diterima backend tanpa error. |
+| Web dashboard | Data real-time tampil, kontrol berfungsi, dan histori tersimpan. |
+| Recommendation | Rekomendasi sesuai kondisi data gabungan. |
+| Full integration | Sensor, aktuator, rover, backend, dan dashboard berjalan end-to-end. |
+
+## Batasan Prototype
+
+- Sistem dibangun untuk miniatur sawah, bukan implementasi langsung di sawah asli.
+- Rover berjalan pada lintasan galengan/pematang simulasi.
+- Sensor tinggi air dan aktuator irigasi berada pada fixed node, bukan rover.
+- Rover tidak ditinggal permanen di lapangan.
+- Posisi rover menggunakan marker lintasan, bukan GPS.
+- Analisis visual tanaman hanya indikasi awal, bukan diagnosis final.
+- Rekomendasi sistem tetap membutuhkan validasi operator atau petani.
+
+## Risiko dan Mitigasi
+
+| Risiko | Mitigasi |
+| --- | --- |
+| Sensor air tidak stabil | Ambil beberapa pembacaan dan gunakan nilai rata-rata. |
+| Internet tidak stabil saat demo | Siapkan hotspot lokal dan mode demo offline. |
+| Rover keluar lintasan | Gunakan lintasan miniatur yang kontras dan uji line follower berulang. |
+| Gate atau pompa macet | Gunakan mekanik sederhana dan lakukan uji aktuator sebelum demo. |
+| Baterai rover cepat habis | Siapkan baterai cadangan dan batasi durasi patroli. |
+| AI recommendation tidak akurat | Gunakan rule-based recommendation sebagai fallback utama. |
+
+## Roadmap Implementasi
+
+| Minggu | Fokus | Target Output |
+| --- | --- | --- |
+| 1 | Perencanaan dan desain | Desain sistem hybrid, daftar komponen, desain miniatur, dan pembagian tugas. |
+| 2 | Fixed Irrigation Node | Sensor air terbaca, pompa/gate terkendali, telemetri terkirim. |
+| 3 | Rover Scout | Rover mengikuti lintasan, berhenti di zona, kamera mengambil gambar. |
+| 4 | Dashboard dan integrasi | Dashboard, rekomendasi, dan demo end-to-end siap dipresentasikan. |
+
+## Deliverables
+
+- Prototype Fixed Irrigation Node.
+- Prototype Rover Scout.
+- Miniatur sawah dengan jalur galengan dan petak berair.
+- Firmware ESP32 fixed node, rover, dan ESP32-CAM.
+- Backend server dengan API, database, dan MQTT/HTTP handler.
+- Web dashboard untuk monitoring, kontrol, histori, dan rekomendasi.
+- Dokumentasi wiring dan arsitektur sistem.
+- Laporan UAS
