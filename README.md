@@ -14,6 +14,7 @@ Proyek ini dirancang untuk final project UAS Sistem Mikroprosesor dengan pendeka
 | --- | --- |
 | Doni Setiawan Wahyono | 23552011146 |
 |Riki  Gusti Fernada | 23552011081 |
+|Naufal Aulia Nuchrizal| 23552011366 |
 
 
 ## Status Proyek
