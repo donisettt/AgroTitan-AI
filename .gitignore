@@ -1,0 +1,17 @@
+# PlatformIO build output
+.pio/
+**/.pio/
+
+# VSCode local config
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+*.env
+
+# Logs
+*.log
