@@ -282,3 +282,97 @@ while rover state is PATROL:
         send telemetry
         continue patrol
 ```
+## Development Guide
+
+1. Buka folder simulations/wokwi/rover-scout/.
+2. Build firmware menggunakan PlatformIO.
+3. Jalankan simulasi Wokwi dengan rangkaian pada diagram.json.
+4. Gunakan tombol start untuk memulai patroli.
+5. Atur kombinasi switch line follower untuk menguji gerak maju, belok kiri, belok kanan, dan line lost.
+6. Tekan tombol marker untuk mensimulasikan rover sampai di zona pengamatan.
+7. Atur jarak HC-SR04 untuk menguji obstacle detection.
+8. Pantau serial monitor untuk melihat state, sensor, payload, dan response HTTP.
+9. Jika backend/dashboard dibuat, ganti nilai MOCKAPI_ROVER_URL pada src/main.cpp.
+
+Contoh konfigurasi environment jika backend lokal dikembangkan:
+
+env
+APP_ENV=development
+API_BASE_URL=http://localhost:8000
+ROVER_TELEMETRY_ENDPOINT=http://localhost:8000/api/rover/telemetries
+ROVER_ID=ROVER-01
+
+
+## Testing Checklist
+
+| Area | Kriteria Berhasil |
+| --- | --- |
+| Start patrol | Tombol start mengubah rover dari IDLE ke PATROL. |
+| Stop rover | Tombol stop menghentikan rover dan mematikan indikator aktif. |
+| Line follower | Kombinasi input kiri/tengah/kanan menghasilkan FORWARD, TURN_LEFT, TURN_RIGHT, atau LINE_LOST. |
+| Marker zona | Tombol marker menaikkan zone_id dan memicu proses capture. |
+| DHT22 | Nilai suhu dan kelembapan terbaca pada serial monitor dan payload. |
+| Obstacle detection | Rover masuk state OBSTACLE_DETECTED, berhenti, dan buzzer aktif saat jarak di bawah batas. |
+| Telemetry HTTP | Payload berhasil dikirim dan response HTTP tampil pada serial monitor. |
+| Mock image | image_url berubah sesuai zona pengamatan. |
+| Visual status | Zona tertentu dapat menghasilkan status PERLU_INSPEKSI sebagai contoh rule-based inspection. |
+| Dashboard opsional | Data telemetry rover tampil pada dashboard jika backend/frontend dibuat. |
+
+## Batasan Prototype
+
+- Prototype difokuskan pada Rover Scout, bukan sistem irigasi otomatis.
+- Tidak ada sensor tinggi air, pompa, gate, atau solenoid valve pada scope aktif.
+- Rover berjalan pada lintasan simulasi galengan, bukan lumpur sawah asli.
+- ESP32-CAM direpresentasikan sebagai konsep dan image_url mock pada simulasi Wokwi.
+- Posisi rover menggunakan marker lintasan, bukan GPS.
+- Analisis visual tanaman hanya indikasi awal, bukan diagnosis final.
+- Rekomendasi sistem tetap membutuhkan validasi operator atau petani.
+
+## Risiko dan Mitigasi
+
+| Risiko | Mitigasi |
+| --- | --- |
+| Rover keluar lintasan | Gunakan lintasan kontras dan uji kombinasi line follower berulang. |
+| Pembacaan marker tidak stabil | Gunakan debounce marker dan batasi interval pembacaan. |
+| Obstacle false positive | Tetapkan ambang jarak aman dan validasi pembacaan HC-SR04. |
+| Koneksi internet tidak stabil | Gunakan mode demo lokal, serial monitor, atau endpoint backend lokal. |
+| Capture gambar belum riil di Wokwi | Gunakan image_url mock untuk demo data flow, lalu integrasikan ESP32-CAM pada hardware fisik. |
+| Baterai rover cepat habis pada hardware fisik | Batasi durasi patroli dan siapkan baterai cadangan. |
+
+## Roadmap Implementasi
+
+| Tahap | Fokus | Target Output |
+| --- | --- | --- |
+| 1 | Simulasi Rover Scout | Firmware Wokwi berjalan, state machine aktif, dan sensor terbaca. |
+| 2 | Navigasi dan zona | Line follower, marker zona, obstacle detection, LED, dan buzzer berfungsi. |
+| 3 | Telemetri | Payload rover terkirim ke MockAPI atau backend lokal. |
+| 4 | Dashboard opsional | Tampilan monitoring rover, histori telemetry, dan preview image mock. |
+| 5 | Hardware fisik opsional | Rover ESP32/ESP32-CAM diuji pada lintasan miniatur. |
+
+## Deliverables
+
+- Prototype Rover Scout.
+- Simulasi Wokwi Rover Scout.
+- Firmware ESP32 untuk navigasi, sensor, obstacle detection, dan telemetry.
+- Wiring diagram Rover Scout.
+- Payload telemetri rover ke MockAPI atau backend.
+- Dokumentasi README yang sudah disesuaikan dengan scope rover-only.
+- Laporan UAS dengan catatan bahwa Fixed Irrigation Node tidak digunakan pada implementasi akhir.
+
+## Referensi Project Plan
+
+Dokumen project plan awal tetap tersedia di:
+
+text
+docs/Project Plan_Kelompok 6_AgroTitan-AI.pdf
+docs/Project Plan_Kelompok 6_AgroTitan-AI.docx
+
+
+Dokumen tersebut memuat rancangan hybrid awal. README ini adalah acuan scope
+implementasi terbaru untuk versi Rover Scout only.
+
+
+## License
+
+Universitas Teknologi Bandung
+Kelompok 6 - TIF RP 23 CID A
