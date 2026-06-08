@@ -1,58 +1,85 @@
 # AgroTitan-AI
 
-Smart Hybrid Paddy Monitoring & Irrigation Control System.
+Rover Scout prototype for smart paddy field inspection.
 
-AgroTitan-AI adalah prototype smart agriculture berbasis ESP32 dan ESP32-CAM
-untuk pemantauan kondisi lahan padi, kontrol irigasi, inspeksi visual tanaman,
-dan rekomendasi tindakan awal melalui web dashboard.
+AgroTitan-AI adalah prototype smart agriculture berbasis ESP32 untuk inspeksi
+kondisi lahan padi pada miniatur galengan sawah. Implementasi terbaru proyek ini
+difokuskan pada **Rover Scout** saja, tanpa menggunakan Fixed Irrigation Node
+atau node irrigation.
 
-Proyek ini dirancang untuk final project UAS Sistem Mikroprosesor dengan pendekatan arsitektur hybrid: fungsi irigasi dibuat stabil pada node tetap, sementara inspeksi visual dilakukan oleh rover yang dioperasikan secara berkala.
+Project plan sebelumnya mendesain AgroTitan-AI sebagai sistem hybrid yang terdiri
+dari Fixed Irrigation Node, Rover Scout, dan Web Dashboard. Untuk kebutuhan
+implementasi UAS saat ini, scope dipersempit agar prototype lebih realistis
+diselesaikan: rover menjadi unit utama untuk navigasi, pembacaan lingkungan,
+deteksi obstacle, simulasi pengambilan gambar tanaman, dan pengiriman telemetri.
 
-## Tim 6 - TIF RP 23 CID A
+## Kelompok 6 - TIF RP 23 CID A
 
 | Nama | NIM |
 | --- | --- |
 | Doni Setiawan Wahyono | 23552011146 |
-|Riki  Gusti Fernada | 23552011081 |
-|Naufal Aulia Nuchrizal| 23552011366 |
-
+| Riki Gusti Fernanda | 23552011081 |
+| Naufal Aulia Nuchrizal | 23552011366 |
 
 ## Status Proyek
 
 | Item | Keterangan |
 | --- | --- |
-| Status | Prototype planning and implementation scaffold |
-| Objek implementasi | Miniatur lahan padi / simulasi galengan sawah |
-| Platform utama | Web dashboard, firmware ESP32, dan backend API |
+| Status | Prototype Rover Scout dalam tahap implementasi dan simulasi |
+| Scope aktif | Rover Scout saja |
+| Scope tidak digunakan | Fixed Irrigation Node / node irrigation |
+| Objek implementasi | Miniatur lahan padi dengan jalur galengan |
+| Platform simulasi | Wokwi + PlatformIO |
+| Komunikasi data | HTTP REST ke MockAPI atau backend |
+
+## Keputusan Scope
+
+Implementasi saat ini tidak lagi membangun arsitektur hybrid penuh. Perubahan
+scope dilakukan agar fokus proyek lebih jelas dan dapat didemonstrasikan secara
+end-to-end.
+
+| Komponen | Status Implementasi | Catatan |
+| --- | --- | --- |
+| Rover Scout | Aktif | Menjadi fokus utama prototype dan demo. |
+| Web Dashboard / Backend | Opsional / pendukung | Dapat digunakan untuk menerima telemetri rover dan menampilkan data. |
+| Fixed Irrigation Node | Tidak digunakan | Tetap ada sebagai referensi project plan lama, bukan target implementasi saat ini. |
+| Kontrol pompa/gate irigasi | Tidak digunakan | Tidak menjadi fitur demo Rover Scout. |
 
 ## Konsep Utama
 
-AgroTitan-AI memisahkan sistem menjadi dua unit fisik yang saling melengkapi:
+Rover Scout berjalan pada lintasan galengan miniatur menggunakan sensor line
+follower. Saat rover menemukan marker zona pengamatan, rover berhenti, membaca
+data lingkungan, membuat simulasi capture gambar tanaman, lalu mengirimkan
+telemetri ke endpoint HTTP.
 
-| Unit | Peran |
-| --- | --- |
-| Fixed Irrigation Node | Node permanen untuk membaca tinggi air, mengontrol pompa, mengontrol pintu air, dan mengirim telemetri real-time. |
-| Rover Scout | Rover berbasis ESP32-CAM untuk inspeksi visual tanaman padi, pembacaan data lingkungan, dan patroli pada jalur galengan miniatur. |
-| Web Dashboard | Pusat monitoring, kontrol, histori, preview gambar, alert, dan rekomendasi tindakan awal. |
+Fungsi utama Rover Scout:
 
-Sistem rekomendasi bersifat **decision support**, bukan pengambil keputusan
-final. Jika integrasi AI API belum tersedia, rekomendasi tetap dapat berjalan
-dengan rule-based logic.
+- Mengikuti jalur galengan miniatur.
+- Berhenti pada marker zona pengamatan.
+- Membaca suhu dan kelembapan udara.
+- Mendeteksi obstacle di depan rover.
+- Memberi indikator lokal melalui LED dan buzzer.
+- Menghasilkan `image_url` simulasi untuk mewakili hasil capture ESP32-CAM.
+- Mengirim telemetri rover ke MockAPI atau backend.
+
+Sistem rekomendasi, jika dibuat, bersifat **decision support**. Pada scope rover
+saja, rekomendasi dapat dibuat dari status visual tanaman, suhu, kelembapan,
+status obstacle, dan zona pengamatan.
 
 ## Arsitektur Sistem
 
 ```mermaid
 flowchart LR
-    Fixed["Fixed Irrigation Node<br/>ESP32, water level, pump, gate"]
-    Backend["Backend API / MQTT Handler<br/>storage, command processing"]
-    Dashboard["Web Dashboard<br/>monitoring, control, history"]
-    Rover["Rover Scout<br/>ESP32, ESP32-CAM, sensors"]
-    Reco["Recommendation Layer<br/>rule-based / optional LLM"]
+    Rover["Rover Scout<br/>ESP32, line follower, marker, DHT22, ultrasonic"]
+    Camera["Image Capture Simulation<br/>ESP32-CAM concept / mock image_url"]
+    API["MockAPI / Backend API<br/>telemetry receiver"]
+    Dashboard["Web Dashboard<br/>monitoring rover, logs, image preview"]
+    Reco["Recommendation Layer<br/>rule-based optional"]
 
-    Fixed <-->|MQTT / HTTP| Backend
-    Rover <-->|MQTT / HTTP| Backend
-    Backend <--> Dashboard
-    Backend --> Reco
+    Rover --> Camera
+    Rover <-->|HTTP REST| API
+    API <--> Dashboard
+    API --> Reco
     Reco --> Dashboard
 ```
 
@@ -60,270 +87,26 @@ Layer utama:
 
 | Layer | Tanggung Jawab |
 | --- | --- |
-| Fixed Node Layer | Sensor tinggi air, relay pompa, servo gate atau solenoid valve, LED, buzzer, dan telemetri. |
-| Rover Layer | Motor DC, line follower, obstacle detection, ESP32-CAM, sensor lingkungan, dan pengiriman gambar. |
-| Communication Layer | MQTT atau HTTP untuk telemetri dan command. |
-| Backend Layer | API server, database, handler MQTT/HTTP, command processing, dan penyimpanan gambar. |
-| Web Dashboard Layer | Monitoring real-time, histori, kontrol manual/otomatis, preview gambar, dan alert. |
-| Recommendation Layer | Analisis data gabungan untuk menghasilkan rekomendasi tindakan awal. |
+| Rover Control Layer | State machine rover, tombol start/stop, line follower, marker zona, dan simulasi motor. |
+| Sensor Layer | DHT22 untuk suhu/kelembapan dan HC-SR04 untuk obstacle detection. |
+| Visual Inspection Layer | Simulasi capture gambar tanaman melalui `image_url` dan status visual tanaman. |
+| Communication Layer | Pengiriman telemetri rover menggunakan HTTP REST. |
+| Dashboard Layer | Monitoring status rover, zona, sensor, obstacle, dan preview gambar. |
+| Recommendation Layer | Rule-based recommendation opsional dari data rover. |
 
+## Fitur Rover Scout
 
-Riki:
+- Mode `IDLE`, `PATROL`, `STOPPED_AT_ZONE`, dan `OBSTACLE`.
+- Tombol `START_PATROL` untuk memulai patroli.
+- Tombol `STOP_ROVER` untuk menghentikan rover.
+- Navigasi line follower berbasis tiga input sensor: kiri, tengah, kanan.
+- Deteksi marker zona untuk memicu proses inspeksi.
+- Pembacaan suhu dan kelembapan menggunakan DHT22.
+- Deteksi obstacle menggunakan ultrasonic HC-SR04.
+- Simulasi motor kiri dan kanan menggunakan LED.
+- LED status untuk mode patroli.
+- Buzzer sebagai alarm saat obstacle terdeteksi.
+- Simulasi capture gambar tanaman dengan `image_url`.
+- Status visual tanaman: `NORMAL`, `PERLU_INSPEKSI`, atau `UNKNOWN`.
+- Pengiriman payload telemetri secara berkala ke endpoint HTTP.
 
-## Fitur
-
-### Fixed Irrigation Node
-
-- Membaca tinggi air secara real-time.
-- Mengirim data sensor dan status aktuator ke backend.
-- Mengontrol pompa air secara manual atau otomatis.
-- Mengontrol pintu air menggunakan servo gate atau solenoid valve.
-- Mendukung input rain sensor sebagai data tambahan.
-- Menyediakan indikator lokal melalui LED dan buzzer.
-- Tetap dapat menjalankan logika lokal saat koneksi backend terputus sementara.
-
-### Rover Scout
-
-- Bergerak mengikuti jalur galengan miniatur menggunakan sensor line follower.
-- Berhenti pada marker zona pengamatan.
-- Mengambil gambar tanaman padi menggunakan ESP32-CAM.
-- Membaca suhu dan kelembapan udara.
-- Mendeteksi obstacle dan mengirim alert ke dashboard.
-- Mendukung command dari dashboard seperti start patrol, stop rover, dan capture image.
-
-### Web Dashboard
-
-- Monitoring status fixed node: tinggi air, pompa, gate, dan hujan.
-- Monitoring status rover: online/offline, mode patroli, posisi zona, dan alert.
-- Preview gambar tanaman terbaru beserta zona dan timestamp.
-- Histori data sensor, log command, log patroli, dan histori irigasi.
-- Kontrol manual untuk pompa, gate, rover, capture image, dan auto mode.
-- Rekomendasi tindakan awal berdasarkan data air, lingkungan, dan inspeksi visual.
-
-## Struktur Repository
-
-```text
-AgroTitan-AI/
-|-- assets/                      # Media, gambar demo, poster, atau aset dokumentasi
-|-- backend/                     # API server, database layer, MQTT/HTTP handler
-|-- docs/                        # Dokumentasi teknis, wiring, laporan, dan referensi
-|-- firmware/
-|   |-- esp32-cam/               # Firmware kamera / image capture
-|   |-- fixed-irrigation-node/   # Firmware fixed node irigasi
-|   `-- rover-scout/             # Firmware rover dan navigasi
-|-- frontend/                    # Web dashboard
-|-- hardware/                    # Skema wiring, desain mekanik, BOM
-|-- scripts/                     # Helper scripts untuk build, test, atau tooling
-`-- README.md
-```
-
-## Tech Stack
-
-| Area | Teknologi |
-| --- | --- |
-| Firmware | Arduino IDE atau PlatformIO |
-| Microcontroller | ESP32, ESP32-CAM |
-| Communication | MQTT atau HTTP REST |
-| MQTT Broker | Mosquitto atau HiveMQ |
-| Backend | Laravel atau Node.js |
-| Database | MySQL atau Firebase |
-| Frontend | React atau Laravel Blade |
-| Image Upload | Multipart upload atau Base64 |
-| Recommendation | Rule-based logic, optional Gemini API atau OpenAI API |
-
-> Catatan: pilihan stack final dapat disesuaikan dengan implementasi aktual.
-> Dokumentasikan keputusan final pada `docs/` setelah backend, frontend, dan
-> firmware mulai dikembangkan.
-
-## Data dan Komunikasi
-
-### MQTT Topics
-
-| Topic | Fungsi |
-| --- | --- |
-| `agrotitan/fixed-node-01/telemetry` | Data sensor dan status fixed node. |
-| `agrotitan/fixed-node-01/command` | Command untuk pompa dan gate. |
-| `agrotitan/rover-01/status` | Status rover dan posisi zona. |
-| `agrotitan/rover-01/image` | Notifikasi gambar baru dari ESP32-CAM. |
-| `agrotitan/rover-01/alert` | Alert obstacle, rover diangkat, atau gangguan rover. |
-
-### Fixed Node Payload
-
-```json
-{
-  "node_id": "FIXED-NODE-01",
-  "water_level": 4.2,
-  "pump_status": "OFF",
-  "gate_status": "CLOSED",
-  "rain_status": false,
-  "water_status": "IDEAL",
-  "timestamp": "2025-01-15T08:30:00Z"
-}
-```
-
-### Rover Payload
-
-```json
-{
-  "rover_id": "ROVER-01",
-  "zone": "ZONE-02",
-  "rover_status": "STOPPED",
-  "temperature": 31.2,
-  "humidity": 78,
-  "image_url": "/images/rover/zone02_20250115.jpg",
-  "plant_visual_status": "normal",
-  "timestamp": "2025-01-15T08:32:00Z"
-}
-```
-
-## Logika Otomatisasi
-
-### Kontrol Irigasi
-
-```pseudo
-if water_level < MIN_LEVEL:
-    status = "AIR_RENDAH"
-    open_gate()
-    activate_pump()
-    send_alert("Air di bawah batas minimum")
-
-elif MIN_LEVEL <= water_level <= MAX_LEVEL:
-    status = "AIR_IDEAL"
-    close_gate()
-    deactivate_pump()
-
-elif water_level > MAX_LEVEL:
-    status = "AIR_TERLALU_TINGGI"
-    close_gate()
-    deactivate_pump()
-    send_alert("Air melebihi batas maksimum")
-```
-
-### Patroli Rover
-
-```pseudo
-on_command("START_PATROL"):
-    rover_start()
-
-    while not end_of_route:
-        follow_line()
-
-        if marker_detected:
-            rover_stop()
-            read_sensors()
-            capture_image()
-            send_data_to_backend()
-            rover_continue()
-
-    rover_return_to_base()
-```
-
-
-
-## Hardware
-
-### Fixed Irrigation Node
-
-- ESP32
-- Water level sensor
-- Relay module
-- Mini water pump
-- Servo gate atau solenoid valve
-- Rain sensor (opsional)
-- LED indikator dan buzzer
-- Power supply
-- Box pelindung komponen
-
-### Rover Scout
-
-- ESP32
-- ESP32-CAM
-- Motor DC dan roda
-- Motor driver TB6612FNG atau L298N
-- Baterai 18650
-- Sensor IR line follower
-- Sensor ultrasonic
-- DHT22 atau BME280
-- LED indikator dan buzzer
-- Rangka rover
-
-## Development Guide
-
-1. Siapkan struktur modul sesuai folder `backend/`, `frontend/`, dan `firmware/`.
-2. Tentukan stack final backend, frontend, database, dan broker.
-3. Definisikan file konfigurasi environment untuk koneksi broker, database, dan API.
-4. Implementasikan firmware fixed node terlebih dahulu karena irigasi adalah fungsi utama.
-5. Implementasikan rover scout dan uji navigasi pada lintasan miniatur.
-6. Integrasikan backend dengan MQTT/HTTP handler dan database.
-7. Bangun dashboard monitoring dan kontrol.
-8. Tambahkan recommendation layer dengan rule-based logic sebagai baseline.
-9. Jalankan pengujian end-to-end sebelum demo.
-
-Contoh environment yang disarankan:
-
-```env
-APP_ENV=development
-API_BASE_URL=http://localhost:8000
-MQTT_HOST=localhost
-MQTT_PORT=1883
-MQTT_USERNAME=
-MQTT_PASSWORD=
-DB_HOST=localhost
-DB_NAME=agrotitan_ai
-```
-
-## Testing Checklist
-
-| Area | Kriteria Berhasil |
-| --- | --- |
-| Water level sensor | Nilai berubah sesuai perubahan tinggi air pada miniatur. |
-| Pump and gate control | Aktuator merespons command manual dan logika otomatis. |
-| Rover line follower | Rover stabil mengikuti jalur galengan miniatur. |
-| Marker zona | Rover berhenti tepat pada zona pengamatan. |
-| Obstacle detection | Rover berhenti dan mengirim alert saat obstacle terdeteksi. |
-| ESP32-CAM | Gambar tanaman tampil jelas di dashboard. |
-| MQTT / HTTP | Telemetri diterima backend tanpa error. |
-| Web dashboard | Data real-time tampil, kontrol berfungsi, dan histori tersimpan. |
-| Recommendation | Rekomendasi sesuai kondisi data gabungan. |
-| Full integration | Sensor, aktuator, rover, backend, dan dashboard berjalan end-to-end. |
-
-## Batasan Prototype
-
-- Sistem dibangun untuk miniatur sawah, bukan implementasi langsung di sawah asli.
-- Rover berjalan pada lintasan galengan/pematang simulasi.
-- Sensor tinggi air dan aktuator irigasi berada pada fixed node, bukan rover.
-- Rover tidak ditinggal permanen di lapangan.
-- Posisi rover menggunakan marker lintasan, bukan GPS.
-- Analisis visual tanaman hanya indikasi awal, bukan diagnosis final.
-- Rekomendasi sistem tetap membutuhkan validasi operator atau petani.
-
-## Risiko dan Mitigasi
-
-| Risiko | Mitigasi |
-| --- | --- |
-| Sensor air tidak stabil | Ambil beberapa pembacaan dan gunakan nilai rata-rata. |
-| Internet tidak stabil saat demo | Siapkan hotspot lokal dan mode demo offline. |
-| Rover keluar lintasan | Gunakan lintasan miniatur yang kontras dan uji line follower berulang. |
-| Gate atau pompa macet | Gunakan mekanik sederhana dan lakukan uji aktuator sebelum demo. |
-| Baterai rover cepat habis | Siapkan baterai cadangan dan batasi durasi patroli. |
-| AI recommendation tidak akurat | Gunakan rule-based recommendation sebagai fallback utama. |
-
-## Roadmap Implementasi
-
-| Minggu | Fokus | Target Output |
-| --- | --- | --- |
-| 1 | Perencanaan dan desain | Desain sistem hybrid, daftar komponen, desain miniatur, dan pembagian tugas. |
-| 2 | Fixed Irrigation Node | Sensor air terbaca, pompa/gate terkendali, telemetri terkirim. |
-| 3 | Rover Scout | Rover mengikuti lintasan, berhenti di zona, kamera mengambil gambar. |
-| 4 | Dashboard dan integrasi | Dashboard, rekomendasi, dan demo end-to-end siap dipresentasikan. |
-
-## Deliverables
-
-- Prototype Fixed Irrigation Node.
-- Prototype Rover Scout.
-- Miniatur sawah dengan jalur galengan dan petak berair.
-- Firmware ESP32 fixed node, rover, dan ESP32-CAM.
-- Backend server dengan API, database, dan MQTT/HTTP handler.
-- Web dashboard untuk monitoring, kontrol, histori, dan rekomendasi.
-- Dokumentasi wiring dan arsitektur sistem.
-- Laporan UAS
