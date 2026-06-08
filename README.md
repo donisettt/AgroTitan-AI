@@ -110,3 +110,175 @@ Layer utama:
 - Status visual tanaman: `NORMAL`, `PERLU_INSPEKSI`, atau `UNKNOWN`.
 - Pengiriman payload telemetri secara berkala ke endpoint HTTP.
 
+
+## Struktur Repository
+
+```text
+AgroTitan-AI/
+|-- assets/
+|   `-- wiring-diagrams/
+|       |-- rover-scout-wiring-diagram.png
+|       `-- fixed-irrigation-node-wiring-diagram.png   # referensi scope lama
+|-- docs/
+|   |-- Project Plan_Kelompok 6_AgroTitan-AI.docx
+|   `-- Project Plan_Kelompok 6_AgroTitan-AI.pdf
+|-- simulations/
+|   `-- wokwi/
+|       |-- rover-scout/                               # scope aktif
+|       |   |-- src/main.cpp
+|       |   |-- platformio.ini
+|       |   |-- diagram.json
+|       |   |-- libraries.txt
+|       |   `-- wokwi.toml
+|       `-- fixed-irrigation-node/                     # referensi scope lama
+|-- backend/                                           # opsional
+|-- frontend/                                          # opsional
+|-- firmware/                                          # scaffold / pengembangan lanjutan
+`-- README.md
+```
+
+## Tech Stack
+
+| Area | Teknologi |
+| --- | --- |
+| Firmware / Simulasi | Arduino Framework, PlatformIO, Wokwi |
+| Microcontroller | ESP32 DevKit; ESP32-CAM sebagai konsep capture gambar |
+| Sensor | DHT22, HC-SR04, IR line follower atau switch simulasi |
+| Aktuator simulasi | LED motor kiri/kanan, LED status, buzzer |
+| Communication | HTTP REST |
+| Data Receiver | MockAPI atau backend custom |
+| Dashboard | React, Laravel Blade, atau tampilan sederhana berbasis data API |
+| Recommendation | Rule-based logic opsional |
+
+## Simulasi Wokwi Rover Scout
+
+Folder simulasi aktif:
+
+```text
+simulations/wokwi/rover-scout/
+```
+
+File utama:
+
+| File | Fungsi |
+| --- | --- |
+| `src/main.cpp` | Firmware utama Rover Scout. |
+| `diagram.json` | Rangkaian Wokwi. |
+| `platformio.ini` | Konfigurasi PlatformIO untuk ESP32. |
+| `libraries.txt` | Library Wokwi yang dibutuhkan. |
+| `wokwi.toml` | Konfigurasi firmware dan ELF untuk Wokwi. |
+
+### Komponen Simulasi
+
+| Komponen | Fungsi |
+| --- | --- |
+| ESP32 DevKit | Kontroler utama rover. |
+| 3 slide switch | Simulasi sensor line follower kiri, tengah, kanan. |
+| 3 push button | Start patrol, stop rover, dan marker zona. |
+| HC-SR04 | Deteksi obstacle. |
+| DHT22 | Pembacaan suhu dan kelembapan. |
+| 2 LED motor | Simulasi motor kiri dan kanan. |
+| 1 LED status | Indikator rover sedang aktif patroli. |
+| Buzzer | Alarm obstacle. |
+
+### Pin Mapping
+
+| Fungsi | Pin ESP32 |
+| --- | --- |
+| Line follower kiri | GPIO 32 |
+| Line follower tengah | GPIO 33 |
+| Line follower kanan | GPIO 25 |
+| Tombol start | GPIO 13 |
+| Tombol stop | GPIO 16 |
+| Tombol marker zona | GPIO 14 |
+| Ultrasonic TRIG | GPIO 26 |
+| Ultrasonic ECHO | GPIO 27 |
+| DHT22 data | GPIO 19 |
+| LED motor kiri | GPIO 21 |
+| LED motor kanan | GPIO 22 |
+| LED status | GPIO 2 |
+| Buzzer | GPIO 23 |
+
+Input tombol dan line follower menggunakan mode `INPUT_PULLUP`, sehingga aktif
+saat bernilai LOW.
+
+## Data dan Komunikasi
+
+Implementasi saat ini menggunakan HTTP REST. Firmware mengirim payload rover ke:
+
+```text
+https://6a199e03489e4715751a3fb6.mockapi.io/api/v1/rover_telemetries
+```
+
+Endpoint tersebut dapat diganti ke backend sendiri jika dashboard sudah dibuat.
+
+### Rover Telemetry Payload
+
+```json
+{
+  "rover_id": "ROVER-01",
+  "zone_id": "ZONE-02",
+  "rover_status": "STOPPED_AT_ZONE",
+  "movement_action": "CAPTURE_IMAGE",
+  "temperature": 31.20,
+  "humidity": 78.00,
+  "obstacle_distance": 25.50,
+  "obstacle_status": false,
+  "image_url": "/images/rover/ZONE-02_demo.jpg",
+  "plant_visual_status": "PERLU_INSPEKSI",
+  "timestamp": "123456"
+}
+```
+
+| Field | Keterangan |
+| --- | --- |
+| `rover_id` | Identitas rover. |
+| `zone_id` | Zona pengamatan saat ini. |
+| `rover_status` | Status state machine rover. |
+| `movement_action` | Aksi gerak terakhir. |
+| `temperature` | Suhu udara dari DHT22. |
+| `humidity` | Kelembapan udara dari DHT22. |
+| `obstacle_distance` | Jarak obstacle dalam cm. |
+| `obstacle_status` | `true` jika obstacle berada di bawah batas aman. |
+| `image_url` | URL simulasi hasil capture gambar. |
+| `plant_visual_status` | Indikasi visual tanaman. |
+| `timestamp` | Timestamp berbasis `millis()` pada firmware simulasi. |
+
+## State Machine Rover
+
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> PATROL: START_PATROL
+    PATROL --> STOPPED_AT_ZONE: marker detected
+    STOPPED_AT_ZONE --> PATROL: telemetry sent
+    PATROL --> OBSTACLE: obstacle detected
+    OBSTACLE --> PATROL: obstacle clear
+    PATROL --> IDLE: STOP_ROVER
+    OBSTACLE --> IDLE: STOP_ROVER
+```
+
+### Alur Patroli
+
+```pseudo
+on START_PATROL:
+    set rover state to PATROL
+
+while rover state is PATROL:
+    read line follower inputs
+    move forward, turn left, turn right, or stop if line is lost
+
+    if obstacle distance < safe limit:
+        stop rover
+        activate buzzer
+        send obstacle status
+
+    if marker detected:
+        stop rover
+        increment zone
+        read temperature and humidity
+        generate mock image_url
+        set plant visual status
+        send telemetry
+        continue patrol
+```
