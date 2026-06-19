@@ -44,7 +44,9 @@ void loop() {
 
   delay(300);
 
-  float readDistanceCM() {
+}
+
+float readDistanceCM() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
 
@@ -60,6 +62,4 @@ void loop() {
 
   float distance = duration * 0.0343 / 2;
   return distance;
-}
-
 }
