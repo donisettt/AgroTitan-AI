@@ -1,0 +1,1 @@
+- ketik npm install untuk unduh package dari file package.json
