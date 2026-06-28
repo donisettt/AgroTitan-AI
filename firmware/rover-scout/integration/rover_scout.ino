@@ -18,6 +18,8 @@ WebServer server(80);
 #define BUZZER_PIN 25
 #define DHT_PIN 14
 #define DHT_TYPE DHT22
+#define LED_MUNDUR 26
+#define LED_LAMPU  27
 
 DHT dht(DHT_PIN, DHT_TYPE);
 
@@ -28,6 +30,7 @@ String command = "STOP";
 unsigned long startTime = 0;
 float currentTemp = 0;
 float currentHum = 0;
+bool lampuOn = false;
 
 void beepReverse();
 void beepWarning();
@@ -48,7 +51,11 @@ void setup() {
   pinMode(ENA, OUTPUT); pinMode(ENB, OUTPUT);
   pinMode(TRIG_PIN, OUTPUT); pinMode(ECHO_PIN, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_MUNDUR, OUTPUT);
+  pinMode(LED_LAMPU,  OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+  digitalWrite(LED_MUNDUR, LOW);
+  digitalWrite(LED_LAMPU,  LOW);
   stopMotor();
   dht.begin();
 
@@ -68,6 +75,21 @@ void setup() {
   server.on("/right",    []() { command = "RIGHT";    server.send(200, "text/plain", "OK"); });
   server.on("/stop",     []() { command = "STOP";     server.send(200, "text/plain", "OK"); });
   server.on("/emergencystop", []() { command = "STOP"; server.send(200, "text/plain", "OK"); });
+  server.on("/lampu/on",  []() { lampuOn = true;  digitalWrite(LED_LAMPU, HIGH); Serial.println("[LED] Lampu ON");  server.send(200, "text/plain", "ON"); });
+  server.on("/lampu/off", []() { lampuOn = false; digitalWrite(LED_LAMPU, LOW);  Serial.println("[LED] Lampu OFF"); server.send(200, "text/plain", "OFF"); });
+  server.on("/klakson", []() {
+  server.send(200, "text/plain", "OK");
+  for(int i=0;i<2;i++){
+    digitalWrite(BUZZER_PIN, HIGH); delay(100);
+    digitalWrite(BUZZER_PIN, LOW);  delay(80);
+  }
+  Serial.println("[BUZZER] Klakson!");
+  });
+  server.on("/restart", []() {
+    server.send(200, "text/plain", "OK");
+    delay(500);
+    ESP.restart();
+  });
 
   server.begin();
   Serial.println("Web Server Started");
@@ -76,7 +98,7 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  // DHT22 non-blocking, baca tiap 2 detik
+  // DHT22 non-blocking tiap 2 detik
   static unsigned long lastDHT = 0;
   if (millis() - lastDHT >= 2000) {
     lastDHT = millis();
@@ -89,19 +111,34 @@ void loop() {
 
   float distance = getDistance();
 
+  // Obstacle detection
   if (command == "FORWARD" && distance > 0 && distance <= distanceLimit) {
     Serial.printf("[WARN] Obstacle: %.1f cm\n", distance);
     stopMotor();
+    digitalWrite(LED_MUNDUR, LOW);
     beepWarning();
     return;
   }
 
   digitalWrite(BUZZER_PIN, LOW);
-  if      (command == "FORWARD")  { maju(speedForward, speedForward); }
-  else if (command == "BACKWARD") { mundur(speedForward, speedForward); beepReverse(); }
-  else if (command == "LEFT")     { kiri(speedTurn, speedTurn); }
-  else if (command == "RIGHT")    { kanan(speedTurn, speedTurn); }
-  else                            { stopMotor(); }
+
+  if (command == "FORWARD") {
+    digitalWrite(LED_MUNDUR, LOW);
+    maju(speedForward, speedForward);
+  } else if (command == "BACKWARD") {
+    digitalWrite(LED_MUNDUR, HIGH);    // LED mundur nyala
+    mundur(speedForward, speedForward);
+    beepReverse();
+  } else if (command == "LEFT") {
+    digitalWrite(LED_MUNDUR, LOW);
+    kiri(speedTurn, speedTurn);
+  } else if (command == "RIGHT") {
+    digitalWrite(LED_MUNDUR, LOW);
+    kanan(speedTurn, speedTurn);
+  } else {
+    digitalWrite(LED_MUNDUR, LOW);
+    stopMotor();
+  }
 }
 
 void handleStatus() {
@@ -121,7 +158,8 @@ void handleStatus() {
   json += "\"distLimit\":" + String(distanceLimit) + ",";
   json += "\"ip\":\"" + ip + "\",";
   json += "\"temp\":" + String(currentTemp, 1) + ",";
-  json += "\"humidity\":" + String(currentHum, 1);
+  json += "\"humidity\":" + String(currentHum, 1) + ",";
+  json += "\"lampu\":" + String(lampuOn ? "true" : "false");
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -218,8 +256,12 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
 .info-table tr td:first-child{color:#7d8590;padding:3px 0;width:60px}
 .info-table tr td:last-child{color:#e6edf3;font-weight:500}
 .obs-banner{display:none;background:#3a0a0a;border:1px solid #f8514966;color:#f85149;font-size:12px;font-weight:600;text-align:center;padding:8px 20px;margin:0 20px 8px;border-radius:8px}
-/* DHT Alert */
 .dht-alert{display:none;background:#1a1a0a;border:1px solid #d2992244;color:#d29922;font-size:11px;text-align:center;padding:5px;margin-top:6px;border-radius:6px}
+.lampu-btn{width:100%;padding:12px;border-radius:8px;border:1px solid #d2992244;background:#1a1500;color:#d29922;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;letter-spacing:.5px;margin-top:8px}
+.lampu-btn.on{background:#2a2000;border-color:#d29922;color:#ffd700}
+.lampu-btn:active{transform:scale(.97)}
+.lampu-indicator{width:10px;height:10px;border-radius:50%;background:#3d444d;transition:background .2s;flex-shrink:0}
+.lampu-indicator.on{background:#ffd700}
 @media(max-width:768px){
   .stats-row{grid-template-columns:1fr 1fr;padding:10px 12px 8px}
   .main{grid-template-columns:1fr;padding:0 12px 20px}
@@ -251,7 +293,6 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
   </div>
   <div class="topbar-right">
     <div class="top-stat"><span class="ic">&#128246;</span><span class="tv cg">WiFi Connected</span></div>
-    <div class="top-stat"><span class="ic">&#128267;</span><span class="tv">--</span></div>
     <div class="top-stat"><span class="ic">&#128336;</span><span class="tv" id="t-time">--:--:--</span></div>
   </div>
 </div>
@@ -353,7 +394,6 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
           <div class="status-lbl">Perintah</div>
           <div class="status-val cy" id="st-cmd">STOP</div>
         </div>
-        <!-- DHT realtime di status panel -->
         <div style="border-top:1px solid #21262d;margin-top:10px;padding-top:10px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div>
@@ -376,7 +416,7 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
       </div>
       <div class="card-body">
         <div class="qa-grid">
-          <div class="qa-btn qa-blue" onclick="addLog('INFO','Restart diminta...')">&#8635; Restart</div>
+          <div class="qa-btn qa-blue" onclick="doRestart()">&#8635; Restart</div>
           <div class="qa-btn qa-yellow" onclick="addLog('INFO','Foto diambil')">&#128247; Foto</div>
           <div class="qa-btn qa-purple" onclick="downloadLogs()">&#11015; Unduh Log</div>
           <div class="qa-btn qa-red" onclick="emergencyStop()">&#9888; Darurat</div>
@@ -396,12 +436,13 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
           <tr><td>Driver</td><td>: L298N</td></tr>
           <tr><td>Kamera</td><td>: ESP32-CAM</td></tr>
           <tr><td>Sensor</td><td>: HC-SR04 + DHT22</td></tr>
+          <tr><td>LED</td><td>: Mundur(26) + Lampu(27)</td></tr>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- COL 3: SETTINGS + DPAD -->
+  <!-- COL 3: SETTINGS + LAMPU + DPAD -->
   <div class="right-col">
     <div class="card">
       <div class="card-header">
@@ -422,6 +463,29 @@ input[type=range]{width:100%;accent-color:#3fb950;cursor:pointer;height:4px}
           <div class="sl-lbl">Kecepatan Belok <span id="lbl-trn">180</span></div>
           <input type="range" min="90" max="255" value="180" id="sl-trn">
           <div class="sl-minmax"><span>90</span><span>255</span></div>
+        </div>
+
+        <!-- LAMPU TOGGLE -->
+        <div style="border-top:1px solid #21262d;margin-top:12px;padding-top:12px">
+          <div style="font-size:10px;color:#7d8590;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+            LAMPU DEPAN
+            <div style="display:flex;align-items:center;gap:5px;font-size:10px">
+              <div class="lampu-indicator" id="lampu-ind"></div>
+              <span id="lampu-status-txt" style="color:#3d444d">MATI</span>
+            </div>
+          </div>
+          <div class="lampu-btn" id="lampu-btn" onclick="toggleLampu()">
+            &#128294; <span id="lampu-btn-txt">Hidupkan Lampu</span>
+          </div>
+        </div>
+
+        <!-- setelah div lampu toggle, sebelum closing card-body -->
+        <div style="border-top:1px solid #21262d;margin-top:12px;padding-top:12px">
+          <div style="font-size:10px;color:#7d8590;letter-spacing:.5px;margin-bottom:6px">KLAKSON</div>
+          <div class="lampu-btn" style="border-color:#58a6ff44;background:#0a1a30;color:#58a6ff" 
+              onmousedown="tekanKlakson()" ontouchstart="e=>{e.preventDefault();tekanKlakson()}">
+            &#128227; <span>Klakson</span>
+          </div>
         </div>
       </div>
     </div>
@@ -480,6 +544,11 @@ document.getElementById("btn-stp").addEventListener("click",()=>send("stop"));
 
 function emergencyStop(){send("stop");addLog("WARN","EMERGENCY STOP diaktifkan!");}
 
+function doRestart(){
+  addLog("WARN","ESP32 restart dalam 3 detik...");
+  fetch("/restart").then(()=>{setTimeout(()=>{addLog("INFO","Reconnecting...");location.reload();},4000);});
+}
+
 function downloadLogs(){
   const txt=document.getElementById("logs").innerText;
   const a=document.createElement("a");
@@ -497,40 +566,64 @@ document.getElementById("sl-spd").oninput=function(){document.getElementById("lb
 document.getElementById("sl-dst").oninput=function(){document.getElementById("lbl-dst").textContent=this.value;clearTimeout(this._t);this._t=setTimeout(sendSettings,500);};
 document.getElementById("sl-trn").oninput=function(){document.getElementById("lbl-trn").textContent=this.value;};
 
-// Track apakah DHT pernah dapat data valid
+let lampuState = false;
+
+function toggleLampu(){
+  const next = !lampuState;
+  fetch(next ? "/lampu/on" : "/lampu/off").then(()=>{
+    lampuState = next;
+    updateLampuUI(next);
+    addLog(next?"OK":"INFO","Lampu depan "+(next?"dinyalakan":"dimatikan"));
+  });
+}
+
+function updateLampuUI(on){
+  const btn  = document.getElementById("lampu-btn");
+  const ind  = document.getElementById("lampu-ind");
+  const txt  = document.getElementById("lampu-btn-txt");
+  const stxt = document.getElementById("lampu-status-txt");
+  if(on){
+    btn.classList.add("on"); ind.classList.add("on");
+    txt.textContent="Matikan Lampu";
+    stxt.textContent="NYALA"; stxt.style.color="#ffd700";
+  } else {
+    btn.classList.remove("on"); ind.classList.remove("on");
+    txt.textContent="Hidupkan Lampu";
+    stxt.textContent="MATI"; stxt.style.color="#3d444d";
+  }
+}
+
+function tekanKlakson(){
+  fetch("/klakson");
+  addLog("INFO","Klakson dibunyikan");
+}
+
 let dhtOk = false;
 
 function fetchStatus(){
   fetch("/status").then(r=>r.json()).then(d=>{
-    // Distance
     document.getElementById("s-dist").textContent=d.distance.toFixed(1)+" cm";
     const ds=document.getElementById("s-dist-st");
     if(d.status==="OBSTACLE"){
-      ds.textContent="TERHALANG"; ds.className="scard-sub cr";
+      ds.textContent="TERHALANG";ds.className="scard-sub cr";
       document.getElementById("obs").style.display="block";
     } else {
-      ds.textContent="AMAN"; ds.className="scard-sub cg";
+      ds.textContent="AMAN";ds.className="scard-sub cg";
       document.getElementById("obs").style.display="none";
     }
-
-    // DHT22 — cek validitas (0.0 saat belum dapat data pertama)
-    if(d.temp > 0 || dhtOk){
-      dhtOk = true;
-      const tempStr = d.temp.toFixed(1)+" \u00b0C";
-      const humStr  = d.humidity.toFixed(1)+"%";
-      document.getElementById("s-temp").textContent = tempStr;
-      document.getElementById("s-hum").textContent  = humStr;
-      document.getElementById("st-temp").textContent = tempStr;
-      document.getElementById("st-hum").textContent  = humStr;
-      document.getElementById("dht-alert").style.display = "none";
-
-      // Log jika suhu ekstrem
-      if(d.temp > 35) addLog("WARN","Suhu tinggi: "+d.temp.toFixed(1)+"°C");
+    if(d.temp>0||dhtOk){
+      dhtOk=true;
+      const ts=d.temp.toFixed(1)+" \u00b0C";
+      const hs=d.humidity.toFixed(1)+"%";
+      document.getElementById("s-temp").textContent=ts;
+      document.getElementById("s-hum").textContent=hs;
+      document.getElementById("st-temp").textContent=ts;
+      document.getElementById("st-hum").textContent=hs;
+      document.getElementById("dht-alert").style.display="none";
+      if(d.temp>35) addLog("WARN","Suhu tinggi: "+d.temp.toFixed(1)+"°C");
     } else {
-      document.getElementById("dht-alert").style.display = "block";
+      document.getElementById("dht-alert").style.display="block";
     }
-
-    // Status
     document.getElementById("s-rssi").textContent=d.rssi+" dBm";
     document.getElementById("st-ip").textContent=d.ip||"--";
     const ut=d.uptime;
@@ -541,6 +634,10 @@ function fetchStatus(){
     document.getElementById("sl-spd").value=d.speed;
     document.getElementById("lbl-dst").textContent=d.distLimit;
     document.getElementById("sl-dst").value=d.distLimit;
+    if(d.lampu!==undefined && d.lampu!==lampuState){
+      lampuState=d.lampu;
+      updateLampuUI(d.lampu);
+    }
   }).catch(()=>{});
 }
 
@@ -549,6 +646,7 @@ fetchStatus();
 addLog("INFO","WiFi Terhubung");
 addLog("INFO","Dashboard dimuat");
 addLog("INFO","DHT22 aktif - GPIO14");
+addLog("INFO","LED Mundur@GPIO26 | Lampu@GPIO27");
 </script>
 </body>
 </html>
@@ -564,7 +662,7 @@ void beepReverse() {
   digitalWrite(BUZZER_PIN, LOW);  delay(600);
 }
 void beepWarning() {
-  for (int i = 0; i < 6; i++) {
+  for(int i=0;i<6;i++){
     digitalWrite(BUZZER_PIN, HIGH); delay(80);
     digitalWrite(BUZZER_PIN, LOW);  delay(80);
   }
@@ -579,7 +677,7 @@ float getDistance() {
   digitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
   long dur = pulseIn(ECHO_PIN, HIGH, 30000);
-  if (dur == 0) return -1;
+  if(dur==0) return -1;
   return dur * 0.034 / 2;
 }
 
