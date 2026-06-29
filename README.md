@@ -1,378 +1,303 @@
-# AgroTitan-AI
+# RoverScout - Smart Environment Monitoring Robot
 
-Rover Scout prototype for smart paddy field inspection.
+> Prototype robot pemantau lingkungan berbasis ESP32 dengan kendali manual real-time via Web Dashboard HTTP.
 
-AgroTitan-AI adalah prototype smart agriculture berbasis ESP32 untuk inspeksi
-kondisi lahan padi pada miniatur galengan sawah. Implementasi terbaru proyek ini
-difokuskan pada **Rover Scout** saja, tanpa menggunakan Fixed Irrigation Node
-atau node irrigation.
+![ESP32](https://img.shields.io/badge/ESP32-Arduino-blue)
+![HTTP](https://img.shields.io/badge/Protocol-HTTP%20REST-green)
+![DHT22](https://img.shields.io/badge/Sensor-DHT22%20%7C%20HC--SR04-orange)
+![Status](https://img.shields.io/badge/Status-Prototype%20Active-brightgreen)
 
-Project plan sebelumnya mendesain AgroTitan-AI sebagai sistem hybrid yang terdiri
-dari Fixed Irrigation Node, Rover Scout, dan Web Dashboard. Untuk kebutuhan
-implementasi UAS saat ini, scope dipersempit agar prototype lebih realistis
-diselesaikan: rover menjadi unit utama untuk navigasi, pembacaan lingkungan,
-deteksi obstacle, simulasi pengambilan gambar tanaman, dan pengiriman telemetri.
+---
 
-## Kelompok 6 - TIF RP 23 CID A
+## Kelompok 6 — TIF RP 23 CID A
 
 | Nama | NIM |
-| --- | --- |
+|------|-----|
 | Doni Setiawan Wahyono | 23552011146 |
 | Riki Gusti Fernanda | 23552011081 |
 | Naufal Aulia Nuchrizal | 23552011366 |
 
-## Status Proyek
+---
 
-| Item | Keterangan |
-| --- | --- |
-| Status | Prototype Rover Scout dalam tahap implementasi dan simulasi |
-| Scope aktif | Rover Scout saja |
-| Scope tidak digunakan | Fixed Irrigation Node / node irrigation |
-| Objek implementasi | Miniatur lahan padi dengan jalur galengan |
-| Platform simulasi | Wokwi + PlatformIO |
-| Komunikasi data | HTTP REST ke MockAPI atau backend |
+## Deskripsi Project
 
-## Keputusan Scope
+**RoverScout** adalah prototype robot pemantau lingkungan berbasis ESP32 yang dapat dikendalikan secara remote melalui web dashboard. Robot ini dirancang untuk melakukan inspeksi kondisi lingkungan suatu area seperti gudang, ruangan server, atau area industri tanpa operator harus masuk secara fisik ke lokasi tersebut.
 
-Implementasi saat ini tidak lagi membangun arsitektur hybrid penuh. Perubahan
-scope dilakukan agar fokus proyek lebih jelas dan dapat didemonstrasikan secara
-end-to-end.
+Rover dilengkapi sensor suhu dan kelembaban DHT22 untuk monitoring kondisi lingkungan secara real-time, sensor ultrasonik HC-SR04 untuk obstacle detection otomatis agar rover tidak menabrak objek di sekitarnya, serta sistem indikator LED dan buzzer sebagai peringatan lokal. Semua data sensor dan kontrol gerak rover tersedia pada dashboard web yang responsif dan dapat diakses dari perangkat mobile maupun desktop selama berada dalam jaringan WiFi yang sama.
 
-| Komponen | Status Implementasi | Catatan |
-| --- | --- | --- |
-| Rover Scout | Aktif | Menjadi fokus utama prototype dan demo. |
-| Web Dashboard / Backend | Opsional / pendukung | Dapat digunakan untuk menerima telemetri rover dan menampilkan data. |
-| Fixed Irrigation Node | Tidak digunakan | Tetap ada sebagai referensi project plan lama, bukan target implementasi saat ini. |
-| Kontrol pompa/gate irigasi | Tidak digunakan | Tidak menjadi fitur demo Rover Scout. |
+### Latar Belakang
 
-## Konsep Utama
+Monitoring kondisi lingkungan pada area tertentu umumnya masih dilakukan secara manual — operator harus berjalan mengelilingi area untuk mengecek suhu, kelembaban, dan kondisi fisik sekitar. Pendekatan ini tidak efisien dan memiliki keterbatasan jangkauan. RoverScout hadir sebagai solusi prototype yang memungkinkan inspeksi area dilakukan secara remote menggunakan robot yang dikendalikan via browser tanpa instalasi aplikasi tambahan.
 
-Rover Scout berjalan pada lintasan galengan miniatur menggunakan sensor line
-follower. Saat rover menemukan marker zona pengamatan, rover berhenti, membaca
-data lingkungan, membuat simulasi capture gambar tanaman, lalu mengirimkan
-telemetri ke endpoint HTTP.
+---
 
-Fungsi utama Rover Scout:
+## Fitur Utama
 
-- Mengikuti jalur galengan miniatur.
-- Berhenti pada marker zona pengamatan.
-- Membaca suhu dan kelembapan udara.
-- Mendeteksi obstacle di depan rover.
-- Memberi indikator lokal melalui LED dan buzzer.
-- Menghasilkan `image_url` simulasi untuk mewakili hasil capture ESP32-CAM.
-- Mengirim telemetri rover ke MockAPI atau backend.
+| Fitur | Deskripsi |
+|-------|-----------|
+| **Kendali manual 4 arah** | Maju, mundur, kiri, kanan via web dashboard — touch support untuk mobile |
+| **Obstacle detection otomatis** | HC-SR04 mendeteksi objek di depan; rover berhenti otomatis dan buzzer aktif |
+| **Monitoring suhu & kelembaban** | DHT22 membaca kondisi lingkungan real-time dan menampilkan di dashboard |
+| **LED mundur otomatis** | GPIO26 menyala otomatis saat rover bergerak mundur |
+| **Lampu penerangan depan** | GPIO27 dikontrol manual via dashboard untuk menerangi area gelap |
+| **Klakson** | Buzzer dibunyikan manual dari dashboard sebagai peringatan area |
+| **Pengaturan dinamis** | Kecepatan dan jarak stop sensor diatur langsung dari web tanpa re-upload |
+| **System log real-time** | Semua aktivitas rover tercatat dengan timestamp di dashboard |
+| **Remote restart** | ESP32 dapat di-restart via dashboard tanpa akses fisik ke perangkat |
+| **Unduh log** | Log sistem diunduh sebagai file `.txt` untuk keperluan dokumentasi |
+| **Responsive UI** | Dashboard adaptif untuk mobile dan desktop |
 
-Sistem rekomendasi, jika dibuat, bersifat **decision support**. Pada scope rover
-saja, rekomendasi dapat dibuat dari status visual tanaman, suhu, kelembapan,
-status obstacle, dan zona pengamatan.
+---
 
 ## Arsitektur Sistem
 
-```mermaid
-flowchart LR
-    Rover["Rover Scout<br/>ESP32, line follower, marker, DHT22, ultrasonic"]
-    Camera["Image Capture Simulation<br/>ESP32-CAM concept / mock image_url"]
-    API["MockAPI / Backend API<br/>telemetry receiver"]
-    Dashboard["Web Dashboard<br/>monitoring rover, logs, image preview"]
-    Reco["Recommendation Layer<br/>rule-based optional"]
-
-    Rover --> Camera
-    Rover <-->|HTTP REST| API
-    API <--> Dashboard
-    API --> Reco
-    Reco --> Dashboard
+```
+┌──────────────────────────────────────────────────────┐
+│                  RoverScout (ESP32)                   │
+│                                                      │
+│   ┌─────────────┐   ┌─────────────┐                  │
+│   │    DHT22    │   │   HC-SR04   │   Sensor Layer   │
+│   │  Suhu & Hum │   │  Obstacle   │                  │
+│   └──────┬──────┘   └──────┬──────┘                  │
+│          │                 │                          │
+│   ┌──────▼─────────────────▼──────┐                  │
+│   │        ESP32 Core Logic        │                  │
+│   │  WebServer + Motor Control +   │  Control Layer  │
+│   │  Sensor Read + LED + Buzzer    │                  │
+│   └──────┬─────────────────┬──────┘                  │
+│          │                 │                          │
+│   ┌──────▼──────┐   ┌──────▼──────┐                  │
+│   │   L298N     │   │  LED/Buzzer │  Actuator Layer  │
+│   │ Motor Driver│   │  Indicator  │                  │
+│   └─────────────┘   └─────────────┘                  │
+│                                                      │
+│              WebServer HTTP Port 80                   │
+└──────────────────────┬───────────────────────────────┘
+                       │
+                  WiFi (HTTP REST)
+                       │
+          ┌────────────▼───────────┐
+          │     Web Dashboard      │
+          │  Browser Mobile/Desktop│
+          │  Monitoring + Control  │
+          └────────────────────────┘
 ```
 
-Layer utama:
+---
 
-| Layer | Tanggung Jawab |
-| --- | --- |
-| Rover Control Layer | State machine rover, tombol start/stop, line follower, marker zona, dan simulasi motor. |
-| Sensor Layer | DHT22 untuk suhu/kelembapan dan HC-SR04 untuk obstacle detection. |
-| Visual Inspection Layer | Simulasi capture gambar tanaman melalui `image_url` dan status visual tanaman. |
-| Communication Layer | Pengiriman telemetri rover menggunakan HTTP REST. |
-| Dashboard Layer | Monitoring status rover, zona, sensor, obstacle, dan preview gambar. |
-| Recommendation Layer | Rule-based recommendation opsional dari data rover. |
+## Cara Kerja
 
-## Fitur Rover Scout
-
-- Mode `IDLE`, `PATROL`, `STOPPED_AT_ZONE`, dan `OBSTACLE`.
-- Tombol `START_PATROL` untuk memulai patroli.
-- Tombol `STOP_ROVER` untuk menghentikan rover.
-- Navigasi line follower berbasis tiga input sensor: kiri, tengah, kanan.
-- Deteksi marker zona untuk memicu proses inspeksi.
-- Pembacaan suhu dan kelembapan menggunakan DHT22.
-- Deteksi obstacle menggunakan ultrasonic HC-SR04.
-- Simulasi motor kiri dan kanan menggunakan LED.
-- LED status untuk mode patroli.
-- Buzzer sebagai alarm saat obstacle terdeteksi.
-- Simulasi capture gambar tanaman dengan `image_url`.
-- Status visual tanaman: `NORMAL`, `PERLU_INSPEKSI`, atau `UNKNOWN`.
-- Pengiriman payload telemetri secara berkala ke endpoint HTTP.
-
-
-## Struktur Repository
-
-```text
-AgroTitan-AI/
-|-- assets/
-|   `-- wiring-diagrams/
-|       |-- rover-scout-wiring-diagram.png
-|       `-- fixed-irrigation-node-wiring-diagram.png   # referensi scope lama
-|-- docs/
-|   |-- Project Plan_Kelompok 6_AgroTitan-AI.docx
-|   `-- Project Plan_Kelompok 6_AgroTitan-AI.pdf
-|-- simulations/
-|   `-- wokwi/
-|       |-- rover-scout/                               # scope aktif
-|       |   |-- src/main.cpp
-|       |   |-- platformio.ini
-|       |   |-- diagram.json
-|       |   |-- libraries.txt
-|       |   `-- wokwi.toml
-|       `-- fixed-irrigation-node/                     # referensi scope lama
-|-- backend/                                           # opsional
-|-- frontend/                                          # opsional
-|-- firmware/                                          # scaffold / pengembangan lanjutan
-`-- README.md
 ```
+Operator membuka dashboard di browser
+          │
+          ▼
+Tekan tombol arah → HTTP request ke ESP32 → Motor bergerak
+          │
+          ▼
+HC-SR04 scan tiap loop → Jika jarak < batas → Motor stop + Buzzer peringatan
+          │
+          ▼
+DHT22 baca tiap 2 detik → Suhu & kelembaban update di dashboard
+          │
+          ▼
+Dashboard polling /status tiap 1.5 detik → Semua data tampil real-time
+```
+
+---
+
+## Pin Mapping
+
+| Fungsi | Pin ESP32 | Keterangan |
+|--------|-----------|------------|
+| Motor IN1 | GPIO 18 | Arah motor kanan |
+| Motor IN2 | GPIO 19 | Arah motor kanan |
+| Motor IN3 | GPIO 16 | Arah motor kiri |
+| Motor IN4 | GPIO 17 | Arah motor kiri |
+| Motor ENA | GPIO 21 | PWM kecepatan motor kanan |
+| Motor ENB | GPIO 22 | PWM kecepatan motor kiri |
+| Ultrasonic TRIG | GPIO 4 | Trigger HC-SR04 |
+| Ultrasonic ECHO | GPIO 5 | Echo HC-SR04 |
+| Buzzer | GPIO 25 | Peringatan obstacle + klakson |
+| DHT22 Data | GPIO 14 | Sensor suhu & kelembaban |
+| LED Mundur | GPIO 26 | Nyala otomatis saat mundur |
+| LED Lampu Depan | GPIO 27 | Dikontrol manual via dashboard |
+
+---
 
 ## Tech Stack
 
 | Area | Teknologi |
-| --- | --- |
-| Firmware / Simulasi | Arduino Framework, PlatformIO, Wokwi |
-| Microcontroller | ESP32 DevKit; ESP32-CAM sebagai konsep capture gambar |
-| Sensor | DHT22, HC-SR04, IR line follower atau switch simulasi |
-| Aktuator simulasi | LED motor kiri/kanan, LED status, buzzer |
-| Communication | HTTP REST |
-| Data Receiver | MockAPI atau backend custom |
-| Dashboard | React, Laravel Blade, atau tampilan sederhana berbasis data API |
-| Recommendation | Rule-based logic opsional |
+|------|-----------|
+| Firmware | Arduino Framework (ESP32) |
+| Microcontroller | ESP32 DevKit |
+| Motor Driver | L298N Dual H-Bridge |
+| Sensor | DHT22 (suhu/kelembaban), HC-SR04 (obstacle detection) |
+| Aktuator | LED mundur, LED lampu depan, Buzzer |
+| Komunikasi | HTTP REST — WebServer ESP32 built-in |
+| Dashboard | HTML + CSS + JavaScript (embedded dalam firmware) |
+| Power | Baterai 18650 2S + Step-down ke ESP32 |
 
-## Simulasi Wokwi Rover Scout
+---
 
-Folder simulasi aktif:
+## API Endpoint
 
-```text
-simulations/wokwi/rover-scout/
-```
+| Endpoint | Method | Fungsi |
+|----------|--------|--------|
+| `/` | GET | Halaman dashboard utama |
+| `/status` | GET | JSON status lengkap rover |
+| `/forward` | GET | Gerak maju |
+| `/backward` | GET | Gerak mundur |
+| `/left` | GET | Belok kiri |
+| `/right` | GET | Belok kanan |
+| `/stop` | GET | Berhenti |
+| `/emergencystop` | GET | Emergency stop |
+| `/lampu/on` | GET | Nyalakan lampu depan |
+| `/lampu/off` | GET | Matikan lampu depan |
+| `/klakson` | GET | Bunyikan klakson |
+| `/settings` | GET | Update parameter (`?speed=&distLimit=`) |
+| `/restart` | GET | Restart ESP32 remote |
 
-File utama:
-
-| File | Fungsi |
-| --- | --- |
-| `src/main.cpp` | Firmware utama Rover Scout. |
-| `diagram.json` | Rangkaian Wokwi. |
-| `platformio.ini` | Konfigurasi PlatformIO untuk ESP32. |
-| `libraries.txt` | Library Wokwi yang dibutuhkan. |
-| `wokwi.toml` | Konfigurasi firmware dan ELF untuk Wokwi. |
-
-### Komponen Simulasi
-
-| Komponen | Fungsi |
-| --- | --- |
-| ESP32 DevKit | Kontroler utama rover. |
-| 3 slide switch | Simulasi sensor line follower kiri, tengah, kanan. |
-| 3 push button | Start patrol, stop rover, dan marker zona. |
-| HC-SR04 | Deteksi obstacle. |
-| DHT22 | Pembacaan suhu dan kelembapan. |
-| 2 LED motor | Simulasi motor kiri dan kanan. |
-| 1 LED status | Indikator rover sedang aktif patroli. |
-| Buzzer | Alarm obstacle. |
-
-### Pin Mapping
-
-| Fungsi | Pin ESP32 |
-| --- | --- |
-| Line follower kiri | GPIO 32 |
-| Line follower tengah | GPIO 33 |
-| Line follower kanan | GPIO 25 |
-| Tombol start | GPIO 13 |
-| Tombol stop | GPIO 16 |
-| Tombol marker zona | GPIO 14 |
-| Ultrasonic TRIG | GPIO 26 |
-| Ultrasonic ECHO | GPIO 27 |
-| DHT22 data | GPIO 19 |
-| LED motor kiri | GPIO 21 |
-| LED motor kanan | GPIO 22 |
-| LED status | GPIO 2 |
-| Buzzer | GPIO 23 |
-
-Input tombol dan line follower menggunakan mode `INPUT_PULLUP`, sehingga aktif
-saat bernilai LOW.
-
-## Data dan Komunikasi
-
-Implementasi saat ini menggunakan HTTP REST. Firmware mengirim payload rover ke:
-
-```text
-https://6a199e03489e4715751a3fb6.mockapi.io/api/v1/rover_telemetries
-```
-
-Endpoint tersebut dapat diganti ke backend sendiri jika dashboard sudah dibuat.
-
-### Rover Telemetry Payload
+### Contoh Response `/status`
 
 ```json
 {
-  "rover_id": "ROVER-01",
-  "zone_id": "ZONE-02",
-  "rover_status": "STOPPED_AT_ZONE",
-  "movement_action": "CAPTURE_IMAGE",
-  "temperature": 31.20,
-  "humidity": 78.00,
-  "obstacle_distance": 25.50,
-  "obstacle_status": false,
-  "image_url": "/images/rover/ZONE-02_demo.jpg",
-  "plant_visual_status": "PERLU_INSPEKSI",
-  "timestamp": "123456"
+  "distance": 45.2,
+  "status": "CLEAR",
+  "uptime": 1523,
+  "rssi": -52,
+  "command": "STOP",
+  "speed": 120,
+  "distLimit": 30,
+  "ip": "10.124.253.92",
+  "temp": 26.8,
+  "humidity": 73.5,
+  "lampu": false
 }
 ```
 
-| Field | Keterangan |
-| --- | --- |
-| `rover_id` | Identitas rover. |
-| `zone_id` | Zona pengamatan saat ini. |
-| `rover_status` | Status state machine rover. |
-| `movement_action` | Aksi gerak terakhir. |
-| `temperature` | Suhu udara dari DHT22. |
-| `humidity` | Kelembapan udara dari DHT22. |
-| `obstacle_distance` | Jarak obstacle dalam cm. |
-| `obstacle_status` | `true` jika obstacle berada di bawah batas aman. |
-| `image_url` | URL simulasi hasil capture gambar. |
-| `plant_visual_status` | Indikasi visual tanaman. |
-| `timestamp` | Timestamp berbasis `millis()` pada firmware simulasi. |
+---
 
-## State Machine Rover
+## Cara Penggunaan
 
-```mermaid
-stateDiagram-v2
-    [*] --> IDLE
-    IDLE --> PATROL: START_PATROL
-    PATROL --> STOPPED_AT_ZONE: marker detected
-    STOPPED_AT_ZONE --> PATROL: telemetry sent
-    PATROL --> OBSTACLE: obstacle detected
-    OBSTACLE --> PATROL: obstacle clear
-    PATROL --> IDLE: STOP_ROVER
-    OBSTACLE --> IDLE: STOP_ROVER
+### 1. Instalasi Library Arduino IDE
+
+Pastikan library berikut sudah terinstall di Arduino IDE:
+
+```
+DHT sensor library  — by Adafruit
+Adafruit Unified Sensor
+WiFi                — bawaan ESP32
+WebServer           — bawaan ESP32
 ```
 
-### Alur Patroli
+### 2. Konfigurasi WiFi
 
-```pseudo
-on START_PATROL:
-    set rover state to PATROL
+Sesuaikan SSID dan password hotspot di bagian atas firmware:
 
-while rover state is PATROL:
-    read line follower inputs
-    move forward, turn left, turn right, or stop if line is lost
-
-    if obstacle distance < safe limit:
-        stop rover
-        activate buzzer
-        send obstacle status
-
-    if marker detected:
-        stop rover
-        increment zone
-        read temperature and humidity
-        generate mock image_url
-        set plant visual status
-        send telemetry
-        continue patrol
+```cpp
+const char* ssid     = "nama_hotspot_anda";
+const char* password = "password_anda";
 ```
-## Development Guide
 
-1. Buka folder simulations/wokwi/rover-scout/.
-2. Build firmware menggunakan PlatformIO.
-3. Jalankan simulasi Wokwi dengan rangkaian pada diagram.json.
-4. Gunakan tombol start untuk memulai patroli.
-5. Atur kombinasi switch line follower untuk menguji gerak maju, belok kiri, belok kanan, dan line lost.
-6. Tekan tombol marker untuk mensimulasikan rover sampai di zona pengamatan.
-7. Atur jarak HC-SR04 untuk menguji obstacle detection.
-8. Pantau serial monitor untuk melihat state, sensor, payload, dan response HTTP.
-9. Jika backend/dashboard dibuat, ganti nilai MOCKAPI_ROVER_URL pada src/main.cpp.
+### 3. Upload Firmware
 
-Contoh konfigurasi environment jika backend lokal dikembangkan:
+Upload `main.ino` ke ESP32 menggunakan Arduino IDE. Setelah upload selesai, buka Serial Monitor (baud rate 115200) untuk melihat IP address yang diperoleh ESP32.
 
-env
-APP_ENV=development
-API_BASE_URL=http://localhost:8000
-ROVER_TELEMETRY_ENDPOINT=http://localhost:8000/api/rover/telemetries
-ROVER_ID=ROVER-01
+### 4. Akses Dashboard
 
+Pastikan HP atau laptop terhubung ke WiFi yang sama dengan ESP32, lalu buka browser dan ketik IP yang tampil di Serial Monitor:
+
+```
+http://10.xxx.xxx.xxx
+```
+
+### 5. Operasikan Rover
+
+- Tekan dan **tahan** tombol arah untuk menggerakkan rover
+- **Lepas** tombol untuk berhenti
+- Gunakan slider **Kecepatan** untuk mengatur PWM motor
+- Gunakan slider **Jarak Stop** untuk mengatur sensitivitas obstacle detection
+- Tombol **Lampu** untuk menyalakan/mematikan LED depan
+- Tombol **Klakson** untuk membunyikan buzzer
+
+---
+
+## Struktur Repository
+
+```
+RoverScout/
+├── firmware/
+│   └── rover-scout/
+│       └── main.ino              # Firmware utama ESP32
+├── assets/
+│   └── wiring-diagrams/
+│       └── rover-scout-wiring.png
+├── docs/
+│   ├── Project Plan_Kelompok 6_RoverScout.docx
+│   └── Project Plan_Kelompok 6_RoverScout.pdf
+└── README.md
+```
+
+---
 
 ## Testing Checklist
 
 | Area | Kriteria Berhasil |
-| --- | --- |
-| Start patrol | Tombol start mengubah rover dari IDLE ke PATROL. |
-| Stop rover | Tombol stop menghentikan rover dan mematikan indikator aktif. |
-| Line follower | Kombinasi input kiri/tengah/kanan menghasilkan FORWARD, TURN_LEFT, TURN_RIGHT, atau LINE_LOST. |
-| Marker zona | Tombol marker menaikkan zone_id dan memicu proses capture. |
-| DHT22 | Nilai suhu dan kelembapan terbaca pada serial monitor dan payload. |
-| Obstacle detection | Rover masuk state OBSTACLE_DETECTED, berhenti, dan buzzer aktif saat jarak di bawah batas. |
-| Telemetry HTTP | Payload berhasil dikirim dan response HTTP tampil pada serial monitor. |
-| Mock image | image_url berubah sesuai zona pengamatan. |
-| Visual status | Zona tertentu dapat menghasilkan status PERLU_INSPEKSI sebagai contoh rule-based inspection. |
-| Dashboard opsional | Data telemetry rover tampil pada dashboard jika backend/frontend dibuat. |
+|------|-------------------|
+| Koneksi WiFi | ESP32 terhubung dan IP tampil di Serial Monitor |
+| Akses dashboard | Browser membuka dashboard via IP ESP32 |
+| Gerak maju | Rover maju saat tombol ditekan, berhenti saat dilepas |
+| Gerak mundur | Rover mundur, LED GPIO26 menyala, buzzer beep lambat |
+| Belok kiri | Rover berbelok ke kiri |
+| Belok kanan | Rover berbelok ke kanan |
+| Obstacle detection | Rover berhenti otomatis dan buzzer bunyi saat objek < distLimit |
+| DHT22 | Suhu dan kelembaban terbaca dan tampil di dashboard |
+| LED lampu depan | GPIO27 menyala/mati via tombol dashboard |
+| Klakson | Buzzer berbunyi saat tombol klakson ditekan |
+| Slider kecepatan | Kecepatan rover berubah sesuai nilai slider |
+| Slider jarak stop | Batas obstacle berubah sesuai slider |
+| System log | Aktivitas tercatat real-time di dashboard |
+| Unduh log | File `.txt` berhasil diunduh dari browser |
+| Remote restart | ESP32 restart dan dashboard reload otomatis |
+
+---
 
 ## Batasan Prototype
 
-- Prototype difokuskan pada Rover Scout, bukan sistem irigasi otomatis.
-- Tidak ada sensor tinggi air, pompa, gate, atau solenoid valve pada scope aktif.
-- Rover berjalan pada lintasan simulasi galengan, bukan lumpur sawah asli.
-- ESP32-CAM direpresentasikan sebagai konsep dan image_url mock pada simulasi Wokwi.
-- Posisi rover menggunakan marker lintasan, bukan GPS.
-- Analisis visual tanaman hanya indikasi awal, bukan diagnosis final.
-- Rekomendasi sistem tetap membutuhkan validasi operator atau petani.
+- Rover dikendalikan secara manual belum ada navigasi otomatis
+- Koneksi harus dalam jaringan WiFi lokal yang sama antara pengontrol dan ESP32
+- ESP32-CAM belum terintegrasi pada versi ini; slot kamera sudah tersedia di dashboard
+- Pembacaan tegangan baterai memerlukan voltage divider eksternal ke pin ADC
+- Jangkauan kendali terbatas oleh kekuatan sinyal WiFi
+
+---
 
 ## Risiko dan Mitigasi
 
 | Risiko | Mitigasi |
-| --- | --- |
-| Rover keluar lintasan | Gunakan lintasan kontras dan uji kombinasi line follower berulang. |
-| Pembacaan marker tidak stabil | Gunakan debounce marker dan batasi interval pembacaan. |
-| Obstacle false positive | Tetapkan ambang jarak aman dan validasi pembacaan HC-SR04. |
-| Koneksi internet tidak stabil | Gunakan mode demo lokal, serial monitor, atau endpoint backend lokal. |
-| Capture gambar belum riil di Wokwi | Gunakan image_url mock untuk demo data flow, lalu integrasikan ESP32-CAM pada hardware fisik. |
-| Baterai rover cepat habis pada hardware fisik | Batasi durasi patroli dan siapkan baterai cadangan. |
+|--------|----------|
+| Koneksi WiFi tidak stabil | Gunakan hotspot HP yang sama; pastikan fitur AP Isolation dimatikan |
+| Baterai cepat habis | Pisahkan rail power motor (L298N) dan ESP32 (step-down); gunakan 18650 kapasitas tinggi |
+| Obstacle false positive | Kalibrasi nilai `distLimit` via slider di dashboard sesuai kondisi lapangan |
+| Rover tidak merespons | Cek Serial Monitor; pastikan tidak ada blocking di `loop()` |
+| LED/Buzzer tidak aktif | Verifikasi wiring GPIO dan `pinMode OUTPUT` di `setup()` |
+| Dashboard tidak bisa diakses | Pastikan HP dan ESP32 di jaringan WiFi yang sama; cek IP di Serial Monitor |
 
-## Roadmap Implementasi
+---
 
-| Tahap | Fokus | Target Output |
-| --- | --- | --- |
-| 1 | Simulasi Rover Scout | Firmware Wokwi berjalan, state machine aktif, dan sensor terbaca. |
-| 2 | Navigasi dan zona | Line follower, marker zona, obstacle detection, LED, dan buzzer berfungsi. |
-| 3 | Telemetri | Payload rover terkirim ke MockAPI atau backend lokal. |
-| 4 | Dashboard opsional | Tampilan monitoring rover, histori telemetry, dan preview image mock. |
-| 5 | Hardware fisik opsional | Rover ESP32/ESP32-CAM diuji pada lintasan miniatur. |
+## Potensi Pengembangan
 
-## Deliverables
+- Integrasi **ESP32-CAM** untuk live video streaming area yang diinspeksi
+- Penambahan **sensor kualitas udara** (MQ-135) untuk deteksi gas berbahaya
+- Implementasi **FreeRTOS** dual-core untuk pemisahan task sensor dan motor control
+- Penambahan **mode otomatis** berbasis line follower untuk patroli terjadwal
+- Integrasi **MQTT** untuk pengiriman telemetri ke server monitoring eksternal
+- Penambahan **notifikasi** saat suhu/kelembaban melewati ambang batas tertentu
 
-- Prototype Rover Scout.
-- Simulasi Wokwi Rover Scout.
-- Firmware ESP32 untuk navigasi, sensor, obstacle detection, dan telemetry.
-- Wiring diagram Rover Scout.
-- Payload telemetri rover ke MockAPI atau backend.
-- Dokumentasi README yang sudah disesuaikan dengan scope rover-only.
-- Laporan UAS dengan catatan bahwa Fixed Irrigation Node tidak digunakan pada implementasi akhir.
+---
 
-## Referensi Project Plan
+## Lisensi
 
-Dokumen project plan awal tetap tersedia di:
-
-text
-docs/Project Plan_Kelompok 6_AgroTitan-AI.pdf
-docs/Project Plan_Kelompok 6_AgroTitan-AI.docx
-
-
-Dokumen tersebut memuat rancangan hybrid awal. README ini adalah acuan scope
-implementasi terbaru untuk versi Rover Scout only.
-
-
-## License
-
-Universitas Teknologi Bandung
-Kelompok 6 - TIF RP 23 CID A
+Universitas Teknologi Bandung  
+Kelompok 6 - TIF RP 23 CID A  
+Mata Kuliah Sistem Mikrokontroler
