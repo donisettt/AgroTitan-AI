@@ -9,7 +9,7 @@
 
 ---
 
-## Kelompok 6 — TIF RP 23 CID A
+## Kelompok 6 - TIF RP 23 CID A
 
 | Nama | NIM |
 |------|-----|
@@ -25,9 +25,19 @@
 
 Rover dilengkapi sensor suhu dan kelembaban DHT22 untuk monitoring kondisi lingkungan secara real-time, sensor ultrasonik HC-SR04 untuk obstacle detection otomatis agar rover tidak menabrak objek di sekitarnya, serta sistem indikator LED dan buzzer sebagai peringatan lokal. Semua data sensor dan kontrol gerak rover tersedia pada dashboard web yang responsif dan dapat diakses dari perangkat mobile maupun desktop selama berada dalam jaringan WiFi yang sama.
 
+## Dokumentasi Visual
+
+### RoverScout V1
+
+![RoverScout V1](assets/image/rover%20scout%20-%20v1.png)
+
+### Wiring Diagram V1
+
+![RoverScout Wiring Diagram V1](assets/wiring-diagrams/rover%20scout%20-%20wiring%20diagram%20v1.png)
+
 ### Latar Belakang
 
-Monitoring kondisi lingkungan pada area tertentu umumnya masih dilakukan secara manual — operator harus berjalan mengelilingi area untuk mengecek suhu, kelembaban, dan kondisi fisik sekitar. Pendekatan ini tidak efisien dan memiliki keterbatasan jangkauan. RoverScout hadir sebagai solusi prototype yang memungkinkan inspeksi area dilakukan secara remote menggunakan robot yang dikendalikan via browser tanpa instalasi aplikasi tambahan.
+Monitoring kondisi lingkungan pada area tertentu umumnya masih dilakukan secara manual operator harus berjalan mengelilingi area untuk mengecek suhu, kelembaban, dan kondisi fisik sekitar. Pendekatan ini tidak efisien dan memiliki keterbatasan jangkauan. RoverScout hadir sebagai solusi prototype yang memungkinkan inspeksi area dilakukan secara remote menggunakan robot yang dikendalikan via browser tanpa instalasi aplikasi tambahan.
 
 ---
 
@@ -35,7 +45,7 @@ Monitoring kondisi lingkungan pada area tertentu umumnya masih dilakukan secara 
 
 | Fitur | Deskripsi |
 |-------|-----------|
-| **Kendali manual 4 arah** | Maju, mundur, kiri, kanan via web dashboard — touch support untuk mobile |
+| **Kendali manual 4 arah** | Maju, mundur, kiri, kanan via web dashboard touch support untuk mobile |
 | **Obstacle detection otomatis** | HC-SR04 mendeteksi objek di depan; rover berhenti otomatis dan buzzer aktif |
 | **Monitoring suhu & kelembaban** | DHT22 membaca kondisi lingkungan real-time dan menampilkan di dashboard |
 | **LED mundur otomatis** | GPIO26 menyala otomatis saat rover bergerak mundur |
@@ -133,7 +143,7 @@ Dashboard polling /status tiap 1.5 detik → Semua data tampil real-time
 | Motor Driver | L298N Dual H-Bridge |
 | Sensor | DHT22 (suhu/kelembaban), HC-SR04 (obstacle detection) |
 | Aktuator | LED mundur, LED lampu depan, Buzzer |
-| Komunikasi | HTTP REST — WebServer ESP32 built-in |
+| Komunikasi | HTTP REST WebServer ESP32 built-in |
 | Dashboard | HTML + CSS + JavaScript (embedded dalam firmware) |
 | Power | Baterai 18650 2S + Step-down ke ESP32 |
 
@@ -184,10 +194,10 @@ Dashboard polling /status tiap 1.5 detik → Semua data tampil real-time
 Pastikan library berikut sudah terinstall di Arduino IDE:
 
 ```
-DHT sensor library  — by Adafruit
+DHT sensor library by Adafruit
 Adafruit Unified Sensor
-WiFi                — bawaan ESP32
-WebServer           — bawaan ESP32
+WiFi bawaan ESP32
+WebServer bawaan ESP32
 ```
 
 ### 2. Konfigurasi WiFi
@@ -230,8 +240,10 @@ RoverScout/
 │   └── rover-scout/
 │       └── main.ino              # Firmware utama ESP32
 ├── assets/
+│   ├── image/
+│   │   └── rover scout - v1.png
 │   └── wiring-diagrams/
-│       └── rover-scout-wiring.png
+│       └── rover scout - wiring diagram v1.png
 ├── docs/
 │   ├── Project Plan_Kelompok 6_RoverScout.docx
 │   └── Project Plan_Kelompok 6_RoverScout.pdf
